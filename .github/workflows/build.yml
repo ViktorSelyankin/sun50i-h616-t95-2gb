@@ -16,7 +16,7 @@ jobs:
 
       - name: Clone Armbian Build System
         run: |
-          git clone --depth 1 https://github.com armbian-build
+          git clone --depth 1 https://github.com/armbian/build
 
       - name: Compile and Inject T95 DTB
         run: |
