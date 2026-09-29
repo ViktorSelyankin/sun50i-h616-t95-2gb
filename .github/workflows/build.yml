@@ -12,17 +12,19 @@ jobs:
       - name: Install Dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y git jq aria2 device-tree-compiler
+          sudo apt-get install -y git jq aria2 device-tree-compiler docker.io
 
       - name: Clone Armbian Build System
         run: |
-         git clone --depth 1 https://github.com/armbian/build armbian-build
+          git clone --depth 1 https://github.com/armbian/build armbian-build
 
       - name: Compile and Inject T95 DTB
         run: |
           mkdir -p armbian-build/userpatches
+          # Компилируем dts в бинарный dtb файл
           dtc -I dts -O dtb -o sun50i-h616-t95-2gb.dtb sun50i-h616-t95-2gb.dts
           
+          # Скрипт кастомизации образа (выполнится в конце сборки)
           cat << 'EOF' > armbian-build/userpatches/customize-image.sh
           #!/bin/bash
           mkdir -p /boot/dtb/allwinner/
@@ -36,19 +38,19 @@ jobs:
 
       - name: Execute Armbian Build
         run: |
+          # Переносим DTB в корень для доступности docker-контейнеру
           cp sun50i-h616-t95-2gb.dtb /tmp/
           
           cd armbian-build
-          # Запуск сборки без sudo и с флагом CONFIG_ONLY=no для разблокировки скрытых плат
-          ./compile.sh \
-            BOARD=orangepi-zero2 \
+          # Ваша идеальная команда сборки через Docker
+          ./compile.sh docker \
+            BOARD=orangepizero2 \
             BRANCH=current \
             RELEASE=bookworm \
             BUILD_MINIMAL=yes \
             BUILD_DESKTOP=no \
             KERNEL_ONLY=no \
-            KERNEL_CONFIGURE=no \
-            CONFIG_ONLY=no
+            KERNEL_CONFIGURE=no
 
       - name: Upload Finished Armbian Image
         uses: actions/upload-artifact@v4
