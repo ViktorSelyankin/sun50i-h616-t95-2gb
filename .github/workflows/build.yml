@@ -53,14 +53,13 @@ jobs:
       - name: Execute Armbian Build
         run: |
           cd armbian-build
-          # Обязательно добавляем sudo для работы с файловой системой rootfs напрямую
+          # Добавлено sudo для работы скрипта без Docker
           sudo ./compile.sh \
             BOARD=orangepizero2 \
             BRANCH=current \
             RELEASE=bookworm \
             BUILD_MINIMAL=yes \
             BUILD_DESKTOP=no \
-            KERNEL_ONLY=no \
             KERNEL_CONFIGURE=no
 
       - name: Upload Finished Armbian Image
