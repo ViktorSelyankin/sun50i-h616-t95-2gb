@@ -28,11 +28,11 @@ jobs:
           # Compile DTS to DTB
           dtc -I dts -O dtb -o sun50i-h616-t95-2gb.dtb sun50i-h616-t95-2gb.dts
 
-          # Place DTB into target overlay directory (automatically copied to /boot/dtb/allwinner/)
+          # Place DTB into target overlay directory
           mkdir -p armbian-build/userpatches/overlay/boot/dtb/allwinner/
           cp sun50i-h616-t95-2gb.dtb armbian-build/userpatches/overlay/boot/dtb/allwinner/
 
-          # Customization script to set DTB name safely in armbianEnv.txt
+          # Customization script to set DTB name safely
           mkdir -p armbian-build/userpatches
           cat << 'EOF' > armbian-build/userpatches/customize-image.sh
           #!/bin/bash
@@ -47,11 +47,11 @@ jobs:
           EOF
           chmod +x armbian-build/userpatches/customize-image.sh
 
-        - name: Execute Armbian Build
+      - name: Execute Armbian Build
         run: |
           cd armbian-build
-          # Запускаем сборку напрямую без аргумента docker
-          ./compile.sh \
+          # Запускаем с sudo, так как работаем напрямую в хост-системе
+          sudo ./compile.sh \
             BOARD=orangepizero2 \
             BRANCH=current \
             RELEASE=bookworm \
@@ -59,7 +59,6 @@ jobs:
             BUILD_DESKTOP=no \
             KERNEL_ONLY=no \
             KERNEL_CONFIGURE=no
-
 
       - name: Upload Finished Armbian Image
         uses: actions/upload-artifact@v4
