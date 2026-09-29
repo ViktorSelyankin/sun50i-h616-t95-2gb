@@ -47,10 +47,11 @@ jobs:
           EOF
           chmod +x armbian-build/userpatches/customize-image.sh
 
-      - name: Execute Armbian Build
+        - name: Execute Armbian Build
         run: |
           cd armbian-build
-          ./compile.sh docker \
+          # Запускаем сборку напрямую без аргумента docker
+          ./compile.sh \
             BOARD=orangepizero2 \
             BRANCH=current \
             RELEASE=bookworm \
@@ -58,6 +59,7 @@ jobs:
             BUILD_DESKTOP=no \
             KERNEL_ONLY=no \
             KERNEL_CONFIGURE=no
+
 
       - name: Upload Finished Armbian Image
         uses: actions/upload-artifact@v4
