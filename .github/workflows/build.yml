@@ -1,4 +1,5 @@
 name: Build Armbian for T95 H616
+
 on:
   workflow_dispatch:
 
@@ -28,17 +29,34 @@ jobs:
 
       - name: Compile and Inject T95 DTB
         run: |
-          # Compile DTS to DTB
+          # 1. Компилируем DTS в DTB
           dtc -I dts -O dtb -o sun50i-h616-t95-2gb.dtb sun50i-h616-t95-2gb.dts
 
-          # Place DTB into target overlay directory
-          mkdir -p armbian-build/userpatches/overlay/boot/dtb/allwinner/
-          cp sun50i-h616-t95-2gb.dtb armbian-build/userpatches/overlay/boot/dtb/allwinner/
+          # 2. Создаем оверлей, чтобы передать DTB в файловую систему образа (/tmp)
+          mkdir -p armbian-build/userpatches/overlay/tmp/
+          cp sun50i-h616-t95-2gb.dtb armbian-build/userpatches/overlay/tmp/
 
-          # Customization script to set DTB name safely
+          # 3. Создаем скрипт кастомизации образа
           mkdir -p armbian-build/userpatches
           cat << 'EOF' > armbian-build/userpatches/customize-image.sh
           #!/bin/bash
+
+          # Находим все папки allwinner в /boot (включая динамические версии вроде dtb-6.10.../)
+          ALLWINNER_DIRS=$(find /boot -type d -name "allwinner" 2>/dev/null)
+
+          for dir in $ALLWINNER_DIRS; do
+            if [ -f /tmp/sun50i-h616-t95-2gb.dtb ]; then
+              cp /tmp/sun50i-h616-t95-2gb.dtb "$dir/"
+            fi
+          done
+
+          # Резервная копия на случай символических ссылок
+          mkdir -p /boot/dtb/allwinner
+          if [ -f /tmp/sun50i-h616-t95-2gb.dtb ]; then
+            cp /tmp/sun50i-h616-t95-2gb.dtb /boot/dtb/allwinner/
+          fi
+
+          # Обновляем fdtfile в armbianEnv.txt
           ENV_FILE="/boot/armbianEnv.txt"
           if [ -f "$ENV_FILE" ]; then
             if grep -q "^fdtfile=" "$ENV_FILE"; then
@@ -47,13 +65,16 @@ jobs:
               echo "fdtfile=allwinner/sun50i-h616-t95-2gb.dtb" >> "$ENV_FILE"
             fi
           fi
+
+          # Очищаем временный файл из образа
+          rm -f /tmp/sun50i-h616-t95-2gb.dtb
           EOF
+
           chmod +x armbian-build/userpatches/customize-image.sh
 
       - name: Execute Armbian Build
         run: |
           cd armbian-build
-          # Добавлено sudo для работы скрипта без Docker
           sudo ./compile.sh \
             BOARD=orangepizero2 \
             BRANCH=current \
