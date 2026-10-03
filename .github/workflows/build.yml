@@ -32,42 +32,36 @@ jobs:
           # 1. Компилируем DTS в DTB
           dtc -I dts -O dtb -o sun50i-h616-t95-2gb.dtb sun50i-h616-t95-2gb.dts
 
-          # 2. Создаем оверлей, чтобы передать DTB в файловую систему образа (/tmp)
-          mkdir -p armbian-build/userpatches/overlay/tmp/
-          cp sun50i-h616-t95-2gb.dtb armbian-build/userpatches/overlay/tmp/
+          # 2. Кодируем DTB в base64 строку
+          DTB_B64=$(base64 -w 0 sun50i-h616-t95-2gb.dtb)
 
-          # 3. Создаем скрипт кастомизации образа
+          # 3. Вшиваем DTB напрямую в customize-image.sh
           mkdir -p armbian-build/userpatches
-          cat << 'EOF' > armbian-build/userpatches/customize-image.sh
+          cat << EOF > armbian-build/userpatches/customize-image.sh
           #!/bin/bash
 
-          # Находим все папки allwinner в /boot (включая динамические версии вроде dtb-6.10.../)
-          ALLWINNER_DIRS=$(find /boot -type d -name "allwinner" 2>/dev/null)
+          # Декодируем DTB прямо в /boot
+          echo "$DTB_B64" | base64 -d > /boot/sun50i-h616-t95-2gb.dtb
 
-          for dir in $ALLWINNER_DIRS; do
-            if [ -f /tmp/sun50i-h616-t95-2gb.dtb ]; then
-              cp /tmp/sun50i-h616-t95-2gb.dtb "$dir/"
-            fi
+          # Раскладываем DTB во все найденные папки allwinner (включая dtb-6.x.../)
+          ALLWINNER_DIRS=\$(find /boot -type d -name "allwinner" 2>/dev/null)
+          for dir in \$ALLWINNER_DIRS; do
+            cp /boot/sun50i-h616-t95-2gb.dtb "\$dir/"
           done
 
-          # Резервная копия на случай символических ссылок
+          # Создаем стандартный путь если его нет
           mkdir -p /boot/dtb/allwinner
-          if [ -f /tmp/sun50i-h616-t95-2gb.dtb ]; then
-            cp /tmp/sun50i-h616-t95-2gb.dtb /boot/dtb/allwinner/
-          fi
+          cp /boot/sun50i-h616-t95-2gb.dtb /boot/dtb/allwinner/
 
-          # Обновляем fdtfile в armbianEnv.txt
+          # Настраиваем armbianEnv.txt
           ENV_FILE="/boot/armbianEnv.txt"
-          if [ -f "$ENV_FILE" ]; then
-            if grep -q "^fdtfile=" "$ENV_FILE"; then
-              sed -i 's|^fdtfile=.*|fdtfile=allwinner/sun50i-h616-t95-2gb.dtb|' "$ENV_FILE"
+          if [ -f "\$ENV_FILE" ]; then
+            if grep -q "^fdtfile=" "\$ENV_FILE"; then
+              sed -i 's|^fdtfile=.*|fdtfile=allwinner/sun50i-h616-t95-2gb.dtb|' "\$ENV_FILE"
             else
-              echo "fdtfile=allwinner/sun50i-h616-t95-2gb.dtb" >> "$ENV_FILE"
+              echo "fdtfile=allwinner/sun50i-h616-t95-2gb.dtb" >> "\$ENV_FILE"
             fi
           fi
-
-          # Очищаем временный файл из образа
-          rm -f /tmp/sun50i-h616-t95-2gb.dtb
           EOF
 
           chmod +x armbian-build/userpatches/customize-image.sh
